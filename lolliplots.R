@@ -90,11 +90,10 @@ lolliplot_raw <- function(results, exon_info,
   }
   
   # Draw the figure and rectangles
-  fig <- plot_ly(width=fig_width, hieght=fig_height,
+  fig <- plot_ly(width=fig_width, height=fig_height,
                  type = 'scatter',
                  x = exon_x,
                  y = exon_y,
-                 type = 'scatter',
                  mode = 'lines',
                  fill = 'toself',
                  showlegend=FALSE,
@@ -104,8 +103,7 @@ lolliplot_raw <- function(results, exon_info,
   
   # Draw lollipops onto the exomes 
   for(color in unique(results[,lolli_col])){
-    df_filt = results[which(results[,lolli_col]) == color,]
-    
+    df_filt = results[which(results[,lolli_col] == color),]
     # Create data to draw the lines to the exome
     lines_x = c()
     lines_y = c()
@@ -116,7 +114,7 @@ lolliplot_raw <- function(results, exon_info,
     }
     
     # Add bubble scatter and lines
-    fig <- fig %>% add_trace(type = 'scatter',
+    fig <- fig %>% add_trace(type = 'scatter', inherit=FALSE,
                              x = df_filt[, lolli_x],
                              y = df_filt[, lolli_y]*sign(df_filt[, lolli_direction]),
                              mode='markers',
@@ -126,11 +124,11 @@ lolliplot_raw <- function(results, exon_info,
                              legendgroup=color
                              )
     
-    fig <- fig %>% add_trace(type = 'scatter',
+    fig <- fig %>% add_trace(type = 'scatter', inherit=FALSE,
                            x = lines_x,
                            y = lines_y,
                            mode='lines',
-                           showlegend=False,
+                           showlegend=FALSE,
                            line=list(color='black', width=lollipop_stem_width),
                            hoverinfo='skip',
                            name = color,
@@ -138,17 +136,17 @@ lolliplot_raw <- function(results, exon_info,
                            )
   }
   # Update the figure so legend colour is visible
-  fig <- fig %>% update_layout(legend= list(itemsizing='constant'))
+  #fig <- fig %>% layout(legend= list(itemsizing='constant'))
   
   # Reverse the order so that exome locations and the bubbles are on top
-  fig$x$data <- rev(fig$x$data)
+  fig$x$attrs <- rev(fig$x$attrs)
   
   # Add titles
-  fig <- fig %>% update_layout(
+  fig <- fig %>% layout(
     title=title,
-    xaxis_title='Exon Positions',
-    yaxis_title=lolli_y,
-    legend_title=lolli_col
+    xaxis=list(title='Exon Positions'),
+    yaxis=list(title=lolli_y),
+    legend=list(title=lolli_col)
   )
   
   return(fig)
@@ -163,12 +161,12 @@ reduce_gaps <- function(gene_results, exon_info, new_gap = 10,
   row.names(exon_sorted) <- NULL
   gap <- c(tail(exon_sorted[, ex_start_col], -1), head(exon_sorted[, ex_start_col], 1)) - exon_sorted[, ex_stop_col]
   gap <- gap[1:length(gap)-1]
-  #results_out = gene_results
-  both_col = c(ex_start_col, ex_stop_col)
+  results_out <- gene_results
+  both_col <- c(ex_start_col, ex_stop_col)
   for(i in 1:length(gap)){
     exon_sorted[(i+1):nrow(exon_sorted), both_col] <- exon_sorted[(i+1):nrow(exon_sorted), both_col] %>% apply(2, function(x){x - gap[i] + new_gap})
     my_min <- exon_sorted[i+1, ex_start_col]
-    results_out[which(results_out[, gene_pos_col] > my_min), gene_pos_col] <- results_out[which(results_out[, gene_pos_col] > my_min), gene_pos_col] %>% apply(2, function(x){x - gap[i] + new_gap})
+    results_out[which(results_out[, gene_pos_col] > my_min), gene_pos_col] <- results_out[which(results_out[, gene_pos_col] > my_min), gene_pos_col] %>% lapply(function(x){x - gap[i] + new_gap}) %>% unlist()
   }
   out <- list()
   out$results <- results_out
@@ -179,6 +177,7 @@ reduce_gaps <- function(gene_results, exon_info, new_gap = 10,
 lp.example <- function(){
   ## Important necessary files:
   exon_file <-  "ensembl_exon_positions/b38_downloaded"
+    exon_file <- '/slade/home/beml201/programs/lolliplots/ensembl_exon_positions/b38_downloaded'
   associations <-  "/slade/projects/UKBB/DNA_Nexus/bw_raw_raw_regenie_burden_dnanexus_2022-02-17/Single_Variant_bw_raw_Step2_Chr15_bw_raw.regenie"
   masks <-  "/slade/projects/UKBB/DNA_Nexus/set_lists_450k_v2/annotations_chr15.txt"
   gene_name <- 'IGF1R'
@@ -186,12 +185,12 @@ lp.example <- function(){
   
   exons <-  read_exon_locs(exon_file)
   
-  selected_exons_df <- exons.loc[exons[, 'Transcript.stable.ID'] == transcript_id]
-  assoc_df <- read.table(associations, sep="", comment='#')
-  masks_df <- read.table(masks, sep="", names=c('ID','TID','MASK'))
+  selected_exons_df <- exons[which(exons[, 'Transcript.stable.ID'] == transcript_id),]
+  assoc_df <- read.table(associations, sep="", comment='#', header=TRUE)
+  masks_df <- read.table(masks, sep="", col.names=c('ID','TID','MASK'))
   
   # Merge gene results with masks (so that only selected exomes are used)
-  assoc_results <- merge(masks_df[which(transcript_id %in% masks_df[, 'TID']),], assoc_df, how='inner', on='ID' )
+  assoc_results <- merge(masks_df[grep(transcript_id, masks_df[, 'TID']),], assoc_df, how='inner', on='ID' )
   
   fig1 <- lolliplot_raw(assoc_results, selected_exons_df, gene_name)
   reduced_gap <-  reduce_gaps(assoc_results, selected_exons_df)
