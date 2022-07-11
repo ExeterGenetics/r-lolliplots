@@ -177,7 +177,7 @@ reduce_gaps <- function(gene_results, exon_info, new_gap = 10,
 lp.example <- function(){
   ## Important necessary files:
   exon_file <-  "ensembl_exon_positions/b38_downloaded"
-    exon_file <- '/slade/home/beml201/programs/lolliplots/ensembl_exon_positions/b38_downloaded'
+  exon_file <- '/slade/home/beml201/programs/lolliplots/ensembl_exon_positions/b38_downloaded'
   associations <-  "/slade/projects/UKBB/DNA_Nexus/bw_raw_raw_regenie_burden_dnanexus_2022-02-17/Single_Variant_bw_raw_Step2_Chr15_bw_raw.regenie"
   masks <-  "/slade/projects/UKBB/DNA_Nexus/set_lists_450k_v2/annotations_chr15.txt"
   gene_name <- 'IGF1R'
@@ -200,6 +200,7 @@ lp.example <- function(){
   print(fig1)
   print('Example figure of exomes only (introns removed)')
   print(fig2)
+  #htmlwidgets::saveWidget(as_widget(fig2), "lolliplots_example.html")
 }
 
 if(sys.nframe() == 0){
